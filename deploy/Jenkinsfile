@@ -54,25 +54,30 @@ pipeline {
                 script {
                     echo "Fetching branches from: ${env.SELECTED_REPO} - ${env.BRANCHES_API_URL}"
 
+                    // Fetch branches and save them to a file
                     sh """
-                    curl -s -L \
-                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                    "${env.BRANCHES_API_URL}" | jq -r '.[].name' > branches.txt
+                        curl -s -L \
+                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                        "${env.BRANCHES_API_URL}" | jq -r '.[].name' > branches.txt
                     """
 
-                    def branchChoices = readFile("branches.txt").trim().split("\n")
-
+                    // Read and parse branches
+                    def branchChoices = readFile('branches.txt').trim().split("\n")
+                    
+                    // Ensure there is at least one choice
                     if (branchChoices.size() == 0 || branchChoices[0].trim() == '') {
-                        branchChoices = ['main']  // Default if empty
+                        branchChoices = ['main'] // Default to main if empty
                     }
 
-                    properties([
-                        parameters([
-                            choice(name: 'SELECTED_BRANCH',
-                                choices: branchChoices.join("\n"),
-                                description: 'Select a branch to build')
-                        ])
-                    ])
+                    // **Prompt user to select a branch**
+                    def selectedBranch = input(
+                        message: 'Select a branch to build:',
+                        parameters: [
+                            choice(name: 'SELECTED_BRANCH', choices: branchChoices.join("\n"), description: 'Select a branch')
+                        ]
+                    )
+
+                    env.BRANCH = selectedBranch
                 }
             }
         }
