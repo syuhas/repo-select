@@ -108,7 +108,7 @@ pipeline {
                             string(name: 'OPTIONS', value: env.OPTIONS),
                             string(name: 'AWS_ACCOUNT_ID', value: env.AWS_ACCOUNT_ID),
                             string(name: 'SUBDOMAIN', value: env.SUBDOMAIN),
-                            string(name: 'GIT_REPO', value: env.GIT_REPO),
+                            string(name: 'GIT_REPO', value: env.SELECTED_REPO),
                             string(name: 'BRANCH', value: env.BRANCH),
                             string(name: 'JENKINSFILE_PATH', value: env.JENKINSFILE_PATH)
                         ]
