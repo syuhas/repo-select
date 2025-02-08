@@ -39,7 +39,6 @@ pipeline {
                         ])
                     ])
 
-                    // **Wait for User Input** before proceeding
                     def userInput = input(
                         id: 'RepoSelection',
                         message: 'Select a repository to build:',
@@ -47,9 +46,41 @@ pipeline {
                             choice(name: 'SELECTED_REPO', choices: repoChoices, description: 'Select a repository')
                         ]
                     )
-
-                    // Set the selected repository
                     env.GIT_REPO = userInput
+                }
+            }
+        }
+
+        stage('Fetch Branches from Selected Repository') {
+            steps {
+                script {
+                    echo "Fetching branches for repository: ${env.GIT_REPO}"
+
+                    sh """
+                    curl -s -L \
+                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                    "https://api.github.com/repos/${env.GIT_REPO.replace('https://github.com/', '')}/branches" | jq -r '.[].name' > branches.txt
+                    """
+
+                    def branchChoices = readFile("branches.txt").trim().split("\n")
+
+                    properties([
+                        parameters([
+                            choice(name: 'BRANCH',
+                                choices: branchChoices.join("\n"),
+                                description: 'Select the branch to build')
+                        ])
+                    ])
+
+                    def selectedBranch = input(
+                        id: 'BranchSelection',
+                        message: 'Select a branch to build:',
+                        parameters: [
+                            choice(name: 'SELECTED_BRANCH', choices: branchChoices, description: 'Select a branch')
+                        ]
+                    )
+
+                    env.BRANCH = selectedBranch
                 }
             }
         }
