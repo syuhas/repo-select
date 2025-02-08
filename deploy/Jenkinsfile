@@ -84,10 +84,10 @@ pipeline {
         stage('Clone and Execute Selected Repository') {
             steps {
                 script {
-                    echo "Cloning repository: ${env.GIT_REPO} - Branch: ${env.BRANCH}"
+                    echo "Cloning repository: ${env.SELECTED_REPO} - Branch: ${env.BRANCH}"
                     
                     sh """
-                    rm -rf selected_repo && git clone -b ${env.BRANCH} ${env.GIT_REPO} selected_repo
+                    rm -rf selected_repo && git clone -b ${env.BRANCH} ${env.SELECTED_REPO} selected_repo
                     cd selected_repo
                     """
 
