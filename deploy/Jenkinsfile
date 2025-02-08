@@ -66,6 +66,11 @@ pipeline {
 
                     def branchChoices = readFile("branches.txt").trim().split("\n")
 
+                    // Ensure at least one branch is present
+                    if (branchChoices.size() == 0 || branchChoices[0].trim() == '') {
+                        branchChoices = ['main']  // Default to 'main' if no branches are found
+                    }
+
                     properties([
                         parameters([
                             choice(name: 'BRANCH',
