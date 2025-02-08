@@ -44,37 +44,37 @@ pipeline {
             }
         }
 
-        // stage('Fetch Branches from Selected Repository') {
-        //     steps {
-        //         script {
-        //             echo "Fetching branches from: ${env.SELECTED_REPO}"
+        stage('Fetch Branches from Selected Repository') {
+            steps {
+                script {
+                    echo "Fetching branches from: ${env.SELECTED_REPO}"
 
-        //             def repoName = env.SELECTED_REPO.replace('https://github.com/', '').replace('.git', '')
-        //             def branchesApiUrl = "https://api.github.com/repos/${repoName}/branches"
+                    def repoName = env.SELECTED_REPO.replace('https://github.com/', '').replace('.git', '')
+                    def branchesApiUrl = "https://api.github.com/repos/${repoName}/branches"
 
-        //             sh """
-        //                 curl -s -L \
-        //                 -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-        //                 "${branchesApiUrl}" | jq -r '.[].name' > branches.txt
-        //             """
+                    sh """
+                        curl -s -L \
+                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                        "${branchesApiUrl}" | jq -r '.[].name' > branches.txt
+                    """
 
-        //             def branchChoices = readFile('branches.txt').trim().split("\n")
+                    def branchChoices = readFile('branches.txt').trim().split("\n")
 
-        //             if (branchChoices.size() == 0 || branchChoices[0].trim() == '') {
-        //                 branchChoices = ['main']
-        //             }
+                    if (branchChoices.size() == 0 || branchChoices[0].trim() == '') {
+                        branchChoices = ['main']
+                    }
 
-        //             def selectedBranch = input(
-        //                 message: 'Select a branch to build:',
-        //                 parameters: [
-        //                     choice(name: 'SELECTED_BRANCH', choices: branchChoices.join("\n"), description: 'Select a branch')
-        //                 ]
-        //             )
+                    def selectedBranch = input(
+                        message: 'Select a branch to build:',
+                        parameters: [
+                            choice(name: 'SELECTED_BRANCH', choices: branchChoices.join("\n"), description: 'Select a branch')
+                        ]
+                    )
 
-        //             env.BRANCH = selectedBranch
-        //         }
-        //     }
-        // }
+                    env.BRANCH = selectedBranch
+                }
+            }
+        }
 
 
         // stage('User Selects Repository') {
