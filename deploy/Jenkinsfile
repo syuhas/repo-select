@@ -38,6 +38,18 @@ pipeline {
                                 description: 'Select the repository to build')
                         ])
                     ])
+
+                    // **Wait for User Input** before proceeding
+                    def userInput = input(
+                        id: 'RepoSelection',
+                        message: 'Select a repository to build:',
+                        parameters: [
+                            choice(name: 'SELECTED_REPO', choices: repoChoices, description: 'Select a repository')
+                        ]
+                    )
+
+                    // Set the selected repository
+                    env.GIT_REPO = userInput
                 }
             }
         }
