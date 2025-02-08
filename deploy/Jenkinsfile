@@ -54,12 +54,14 @@ pipeline {
         stage('Fetch Branches from Selected Repository') {
             steps {
                 script {
-                    echo "Fetching branches for repository: ${env.GIT_REPO}"
+                    def repoName = env.SELECTED_REPO.replace('https://github.com/', '').replace('.git', '')
+
+                    echo "Fetching branches for repository: ${repoName}"
 
                     sh """
                     curl -s -L \
                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                    "https://api.github.com/repos/${env.GIT_REPO.replace('https://github.com/', '')}/branches" | jq -r '.[].name' > branches.txt
+                    "https://api.github.com/repos/${repoName}/branches" | jq -r '.[].name' > branches.txt
                     """
 
                     def branchChoices = readFile("branches.txt").trim().split("\n")
@@ -76,7 +78,7 @@ pipeline {
                         id: 'BranchSelection',
                         message: 'Select a branch to build:',
                         parameters: [
-                            choice(name: 'SELECTED_BRANCH', choices: branchChoices, description: 'Select a branch')
+                            choice(name: 'SELECTED_BRANCH', choices: branchChoices.join("\n"), description: 'Select a branch')
                         ]
                     )
 
