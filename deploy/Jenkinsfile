@@ -10,41 +10,36 @@ pipeline {
         stage('Fetch GitHub Repositories') {
             steps {
                 script {
-                    echo "Fetching all repositories from GitHub..."
+                    echo "Fetching repositories from GitHub..."
 
                     sh """
-                    curl -s -L \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                    -H "X-GitHub-Api-Version: 2022-11-28" \
-                    "https://api.github.com/user/repos" > repos.json
+                        curl -s -L \
+                        -H "Accept: application/vnd.github+json" \
+                        -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                        -H "X-GitHub-Api-Version: 2022-11-28" \
+                        "https://api.github.com/user/repos" | jq -r '.[].clone_url' > ${REPO_LIST_FILE}
                     """
 
-                    echo "Repositories saved to repos.json"
-                }
-            }
-        }
+                    echo "Repositories fetched!"
+                    sh "cat ${REPO_LIST_FILE}"
 
-        stage('Extract Repo Names & Branches URLs') {
-            steps {
-                script {
-                    def repoInfo = readJSON(file: 'repos.json')
+                    def repoChoices = readFile(REPO_LIST_FILE).trim().split("\n")
 
-                    def repoChoices = repoInfo.collect { it.full_name }
-                    def branchesURLs = repoInfo.collectEntries { [(it.full_name): it.branches_url.replace('{/branch}', '')] }
+                    // Ensure at least one repo exists
+                    if (repoChoices.size() == 0 || repoChoices[0].trim() == '') {
+                        repoChoices = ['https://github.com/example/default-repo.git']
+                    }
 
-                    echo "Repositories: ${repoChoices}"
-                    echo "Branches API URLs: ${branchesURLs}"
+                    // Prompt user to select a repository
+                    def selectedRepo = input(
+                        message: 'Select a repository to build:',
+                        parameters: [
+                            choice(name: 'SELECTED_REPO', choices: repoChoices.join("\n"), description: 'Select a repository')
+                        ]
+                    )
 
-                    properties([
-                        parameters([
-                            choice(name: 'SELECTED_REPO',
-                                choices: repoChoices.join("\n"),
-                                description: 'Select a repository to build')
-                        ])
-                    ])
-
-                    env.BRANCHES_API_URL = branchesURLs[env.SELECTED_REPO]
+                    // Store the selected repo
+                    env.SELECTED_REPO = selectedRepo
                 }
             }
         }
@@ -52,24 +47,23 @@ pipeline {
         stage('Fetch Branches from Selected Repository') {
             steps {
                 script {
-                    echo "Fetching branches from: ${env.SELECTED_REPO} - ${env.BRANCHES_API_URL}"
+                    echo "Fetching branches from: ${env.SELECTED_REPO}"
 
-                    // Fetch branches and save them to a file
+                    def repoName = env.SELECTED_REPO.replace('https://github.com/', '').replace('.git', '')
+                    def branchesApiUrl = "https://api.github.com/repos/${repoName}/branches"
+
                     sh """
                         curl -s -L \
                         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                        "${env.BRANCHES_API_URL}" | jq -r '.[].name' > branches.txt
+                        "${branchesApiUrl}" | jq -r '.[].name' > branches.txt
                     """
 
-                    // Read and parse branches
                     def branchChoices = readFile('branches.txt').trim().split("\n")
-                    
-                    // Ensure there is at least one choice
+
                     if (branchChoices.size() == 0 || branchChoices[0].trim() == '') {
-                        branchChoices = ['main'] // Default to main if empty
+                        branchChoices = ['main']
                     }
 
-                    // **Prompt user to select a branch**
                     def selectedBranch = input(
                         message: 'Select a branch to build:',
                         parameters: [
@@ -81,6 +75,20 @@ pipeline {
                 }
             }
         }
+
+        stage('Checkout and Build') {
+            steps {
+                script {
+                    echo "Cloning repo: ${env.SELECTED_REPO} and branch: ${env.BRANCH}"
+
+                    git branch: env.BRANCH, url: env.SELECTED_REPO
+
+                    echo "Building application..."
+                    sh "./deploy.sh" // Modify based on your repo’s build process
+                }
+            }
+        }
+
 
         // stage('User Selects Repository') {
         //     steps {
