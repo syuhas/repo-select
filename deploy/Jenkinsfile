@@ -1,240 +1,25 @@
 pipeline {
     agent any
 
-    environment {
-        GITHUB_TOKEN = credentials('GITHUB_TOKEN') // Fetch GitHub token securely
-        REPO_LIST_FILE = "/var/jenkins/workspace/fetch_repos/github_branches.json" // JSON file with repo-branch mappings
-    }
-
     stages {
+        stage('Pre-Build: Fetch GitHub Repositories') {
+            steps {
+                build job: 'fetch_repos' // Call the pre-build job
+            }
+        }
+
         stage('User Selects Repository') {
             steps {
                 script {
-                    def repoJson = readJSON(file: REPO_LIST_FILE)  // Read the JSON file
-                    def repoChoices = repoJson.keySet() as List  // Extract all repo names
+                    def repoChoices = readFile('/var/jenkins_home/workspace/fetch_repos/github_branches.json').trim().split("\n")
 
                     properties([
                         parameters([
                             choice(name: 'GIT_REPO', choices: repoChoices.join("\n"), description: 'Select the repository to build')
                         ])
                     ])
-
-                    // Wait for user input
-                    def userRepoInput = input(
-                        id: 'RepoSelection',
-                        message: 'Select a repository to build:',
-                        parameters: [choice(name: 'SELECTED_REPO', choices: repoChoices.join("\n"), description: 'Select a repository')]
-                    )
-
-                    env.GIT_REPO = userRepoInput  // Store selected repo in env var
-                }
-            }
-        }
-
-        stage('User Selects Branch') {
-            steps {
-                script {
-                    def repoJson = readJSON(file: REPO_LIST_FILE)  // Read JSON again
-                    def branchChoices = repoJson[env.GIT_REPO] ?: ['main']  // Extract branches, default to 'main'
-
-                    properties([
-                        parameters([
-                            choice(name: 'GIT_BRANCH', choices: branchChoices.join("\n"), description: 'Select the branch to build')
-                        ])
-                    ])
-
-                    // Wait for user to select a branch
-                    def userBranchInput = input(
-                        id: 'BranchSelection',
-                        message: 'Select a branch to build:',
-                        parameters: [choice(name: 'SELECTED_BRANCH', choices: branchChoices.join("\n"), description: 'Select a branch')]
-                    )
-
-                    env.GIT_BRANCH = userBranchInput  // Store selected branch in env var
                 }
             }
         }
     }
 }
-// pipeline {
-//     agent any
-
-//     environment {
-//         GITHUB_TOKEN = credentials('GITHUB_TOKEN')  // Fetch GitHub token securely
-//         REPO_LIST_FILE = "/var/jenkins/workspace/fetch_repos"  // Store repo list in workspace
-//         // pass these to the loaded jenkinsfile
-//     }
-
-    // stages {
-    //     stage('Fetch GitHub Repositories') {
-    //         steps {
-    //             script {
-    //                 echo "Fetching repositories from GitHub..."
-
-    //                 sh """
-    //                     curl -s -L \
-    //                     -H "Accept: application/vnd.github+json" \
-    //                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    //                     -H "X-GitHub-Api-Version: 2022-11-28" \
-    //                     "https://api.github.com/user/repos" | jq -r '.[].clone_url' > ${REPO_LIST_FILE}
-    //                 """
-
-    //                 echo "Repositories fetched!"
-    //                 sh "cat ${REPO_LIST_FILE}"
-
-    //                 def repoChoices = readFile(REPO_LIST_FILE).trim().split("\n")
-
-    //                 // Ensure at least one repo exists
-    //                 if (repoChoices.size() == 0 || repoChoices[0].trim() == '') {
-    //                     repoChoices = ['https://github.com/example/default-repo.git']
-    //                 }
-
-    //                 // Prompt user to select a repository
-    //                 def selectedRepo = input(
-    //                     message: 'Select a repository to build:',
-    //                     parameters: [
-    //                         choice(name: 'SELECTED_REPO', choices: repoChoices.join("\n"), description: 'Select a repository')
-    //                     ]
-    //                 )
-
-    //                 // Store the selected repo
-    //                 env.SELECTED_REPO = selectedRepo
-    //             }
-    //         }
-    //     }
-
-    //     stage('Fetch Branches from Selected Repository') {
-    //         steps {
-    //             script {
-    //                 echo "Fetching branches from: ${env.SELECTED_REPO}"
-
-    //                 def repoName = env.SELECTED_REPO.replace('https://github.com/', '').replace('.git', '')
-    //                 def branchesApiUrl = "https://api.github.com/repos/${repoName}/branches"
-
-    //                 sh """
-    //                     curl -s -L \
-    //                     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    //                     "${branchesApiUrl}" | jq -r '.[].name' > branches.txt
-    //                 """
-
-    //                 def branchChoices = readFile('branches.txt').trim().split("\n")
-
-    //                 if (branchChoices.size() == 0 || branchChoices[0].trim() == '') {
-    //                     branchChoices = ['main']
-    //                 }
-
-    //                 def selectedBranch = input(
-    //                     message: 'Select a branch to build:',
-    //                     parameters: [
-    //                         choice(name: 'SELECTED_BRANCH', choices: branchChoices.join("\n"), description: 'Select a branch')
-    //                     ]
-    //                 )
-
-    //                 env.BRANCH = selectedBranch
-    //             }
-    //         }
-    //     }
-
-    //     stage('Clone and Execute Selected Repository') {
-    //         steps {
-    //             script {
-    //                 echo "Cloning repository: ${env.SELECTED_REPO} - Branch: ${env.BRANCH}"
-                    
-    //                 sh """
-    //                 rm -rf selected_repo && git clone -b ${env.BRANCH} ${env.SELECTED_REPO} selected_repo
-    //                 cd selected_repo
-    //                 """
-
-    //                 def repoJenkinsfile = readFile("selected_repo/${JENKINSFILE_PATH}/Jenkinsfile")
-    //                 writeFile file: 'Jenkinsfile', text: repoJenkinsfile
-
-    //                 echo "Jenkinsfile from repository:"
-    //                 sh "cat Jenkinsfile"
-    //             }
-    //         }
-    //     }
-
-    //     stage('Execute Repository Jenkinsfile') {
-    //         steps {
-    //             script {
-    //                 build job: 'ExecuteRepoJenkinsfile', 
-    //                     parameters: [
-    //                         string(name: 'OPTIONS', value: env.OPTIONS),
-    //                         string(name: 'AWS_ACCOUNT_ID', value: env.AWS_ACCOUNT_ID),
-    //                         string(name: 'SUBDOMAIN', value: env.SUBDOMAIN),
-    //                         string(name: 'GIT_REPO', value: env.SELECTED_REPO),
-    //                         string(name: 'BRANCH', value: env.BRANCH),
-    //                         string(name: 'JENKINSFILE_PATH', value: env.JENKINSFILE_PATH)
-    //                     ]
-    //             }
-    //         }
-    //     }
-
-
-        // stage('User Selects Repository') {
-        //     steps {
-        //         script {
-        //             def repoChoices = readFile(REPO_LIST_FILE).trim().split("\n")
-
-        //             properties([
-        //                 parameters([
-        //                     choice(name: 'GIT_REPO',
-        //                         choices: repoChoices.join("\n"),
-        //                         description: 'Select the repository to build')
-        //                 ])
-        //             ])
-
-        //             def userInput = input(
-        //                 id: 'RepoSelection',
-        //                 message: 'Select a repository to build:',
-        //                 parameters: [
-        //                     choice(name: 'SELECTED_REPO', choices: repoChoices, description: 'Select a repository')
-        //                 ]
-        //             )
-        //             env.GIT_REPO = userInput
-        //         }
-        //     }
-        // }
-
-        // stage('Fetch Branches from Selected Repository') {
-        //     steps {
-        //         script {
-        //             def repoName = env.SELECTED_REPO.replace('https://github.com/', '').replace('.git', '')
-
-        //             echo "Fetching branches for repository: ${repoName}"
-
-        //             sh """
-        //             curl -s -L \
-        //             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-        //             "https://api.github.com/repos/${repoName}/branches" | jq -r '.[].name' > branches.txt
-        //             """
-
-        //             def branchChoices = readFile("branches.txt").trim().split("\n")
-
-        //             // Ensure at least one branch is present
-        //             if (branchChoices.size() == 0 || branchChoices[0].trim() == '') {
-        //                 branchChoices = ['main']  // Default to 'main' if no branches are found
-        //             }
-
-        //             properties([
-        //                 parameters([
-        //                     choice(name: 'BRANCH',
-        //                         choices: branchChoices.join("\n"),
-        //                         description: 'Select the branch to build')
-        //                 ])
-        //             ])
-
-        //             def selectedBranch = input(
-        //                 id: 'BranchSelection',
-        //                 message: 'Select a branch to build:',
-        //                 parameters: [
-        //                     choice(name: 'SELECTED_BRANCH', choices: branchChoices.join("\n"), description: 'Select a branch')
-        //                 ]
-        //             )
-
-        //             env.BRANCH = selectedBranch
-        //         }
-        //     }
-        // }
-//     }
-// }
