@@ -8,6 +8,8 @@ def lambda_handler(event, context):
     jenkins_url = 'https://jenkins.digitalsteve.net/'
     job_name = "fetch_repos"
 
+    logger.info(f"Event: {event}")
+
     ssm = boto3.client('ssm')
     
     username = ssm.get_parameter(Name='/jenkins/user', WithDecryption=True)['Parameter']['Value']
@@ -23,5 +25,5 @@ def lambda_handler(event, context):
 
     return {
         'statusCode': 200,
-        'body': json.dumps(response)
+        'body': json.dumps("Fetch Repos Job Triggered Successfully")
     }
