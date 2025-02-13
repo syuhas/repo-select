@@ -2,12 +2,11 @@ import boto3
 import json
 import os
 import re
+from loguru import logger
 
-# list all subdomains ending in domain 'digitalsteve.net'
-
-# workspace = os.environ['WORKSPACE']
-# file_path = os.path.join(workspace, 'subdomains.json')
-file_path = './subdomains.json'
+# list all subdomains ending in domain 'digitalsteve.net' for all accounts in the list
+workspace = os.environ['WORKSPACE']
+file_path = os.path.join(workspace, 'subdomains.json')
 accounts = [
     "551796573889",
     "061039789243"
@@ -40,11 +39,11 @@ def get_subdomains(session):
                     if record_set['Type'] == 'A':
                         trimmed_name = record_set['Name'][:-1]
                         identity = session.client('sts').get_caller_identity()
-                        print(f'{trimmed_name} {identity["Account"]}')
                         regex = re.compile(r'^((?!digitalsteve\.)[^.]+\.)+(?=digitalsteve\.net$)')
                         match = regex.search(trimmed_name)
                         if match:
                             trimmed_subdomain = match.group()[:-1]
+                            logger.info(f'{trimmed_subdomain} ({trimmed_name}) ({identity["Account"]})')
                             domains.append(f'{trimmed_subdomain} ({trimmed_name}) ({identity["Account"]})')
                         
     return domains
