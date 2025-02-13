@@ -1,11 +1,13 @@
 import boto3
 import json
 import os
+import re
 
 # list all subdomains ending in domain 'digitalsteve.net'
 
-workspace = os.environ['WORKSPACE']
-file_path = os.path.join(workspace, 'subdomains.json')
+# workspace = os.environ['WORKSPACE']
+# file_path = os.path.join(workspace, 'subdomains.json')
+file_path = './subdomains.json'
 accounts = [
     "551796573889",
     "061039789243"
@@ -36,7 +38,15 @@ def get_subdomains(session):
             for page in paginator.paginate(HostedZoneId=hosted_zone_id):
                 for record_set in page['ResourceRecordSets']:
                     if record_set['Type'] == 'A':
-                        domains.append(record_set['Name'])
+                        trimmed_name = record_set['Name'][:-1]
+                        identity = session.client('sts').get_caller_identity()
+                        print(f'{trimmed_name} {identity["Account"]}')
+                        regex = re.compile(r'^((?!digitalsteve\.)[^.]+\.)+(?=digitalsteve\.net$)')
+                        match = regex.search(trimmed_name)
+                        if match:
+                            trimmed_subdomain = match.group()[:-1]
+                            domains.append(f'{trimmed_subdomain} ({trimmed_name}) ({identity["Account"]})')
+                        
     return domains
                         
     
