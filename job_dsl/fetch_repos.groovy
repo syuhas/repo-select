@@ -1,4 +1,4 @@
-job('fetch_repos') {
+job('test_fetch_repos') {
     description('Job to fetch a list of repositories and branches from a GitHub account.')
     
     parameters {
