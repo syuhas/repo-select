@@ -1,45 +1,48 @@
 #!/bin/bash
 
+set -x
+
 # Define file paths
-REPO_LIST_FILE="$WORKSPACE/github_repos.json"
+REPO_LIST_FILE="$WORKSPACE/github_repos.txt"
 BRANCHES_LIST_FILE="$WORKSPACE/github_branches.json"
 
-# Fetch repositories (Ensure valid JSON structure)
+# Fetch repositories
 curl -s -H "Accept: application/vnd.github+json" \
      -H "Authorization: Bearer $TOKEN" \
-     "https://api.github.com/user/repos?per_page=100" | jq '[.[] | {name: .name, git_url: .clone_url}]' > "$REPO_LIST_FILE"
+     -H "X-GitHub-Api-Version: 2022-11-28" \
+     "https://api.github.com/user/repos?per_page=100" | jq -r '.[] | .clone_url' > "$REPO_LIST_FILE"
 
 echo "Repositories saved to $REPO_LIST_FILE"
 
-# Initialize JSON object for branches
+# Initialize JSON object
 echo "{" > "$BRANCHES_LIST_FILE"
 
-# Read repo list and fetch branches
-jq -c '.[]' "$REPO_LIST_FILE" | while read -r repo_data; do
-    repo_name=$(echo "$repo_data" | jq -r '.name')
-    git_url=$(echo "$repo_data" | jq -r '.git_url')
+while read -r repo; do
+    # Extract repository name and owner
+    repo_name=$(basename "$repo" .git)  # Extract repo name
+    repo_owner=$(echo "$repo" | awk -F '/' '{print $(NF-1)}')  # Extract repo owner
 
     # Construct GitHub API URL correctly
-    branchesApiUrl="https://api.github.com/repos/$GITHUB_USER/$repo_name/branches"
+    branchesApiUrl="https://api.github.com/repos/$repo_owner/$repo_name/branches"
 
     echo "Fetching branches from: $branchesApiUrl"
 
-    # Fetch branches
+    # Fetch branches and ensure JSON array format
     branches=$(curl -s -H "Accept: application/vnd.github+json" \
                     -H "Authorization: Bearer $TOKEN" \
-                    "$branchesApiUrl" | jq '[.[].name]')
+                    "$branchesApiUrl" | jq -r '[.[] | .name]')
 
     # Handle empty branch list
     if [[ "$branches" == "[]" ]]; then
         branches='["main"]'
     fi
 
-    # Append to JSON
-    echo "\"$repo_name\": { \"branches\": $branches, \"git_url\": \"$git_url\" }," >> "$BRANCHES_LIST_FILE"
+    # Append repo information to JSON file
+    echo "\"$repo_name\": { \"branches\": $branches, \"git_url\": \"$repo\" }," >> "$BRANCHES_LIST_FILE"
 
-done
+done < "$REPO_LIST_FILE"
 
-# Remove last comma and close JSON
+# Remove last comma and close JSON object properly
 sed -i '$ s/,$//' "$BRANCHES_LIST_FILE"
 echo "}" >> "$BRANCHES_LIST_FILE"
 
