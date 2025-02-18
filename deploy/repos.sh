@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -x
 
 # Define file paths
@@ -10,7 +9,7 @@ BRANCHES_LIST_FILE="$WORKSPACE/github_branches.json"
 curl -s -H "Accept: application/vnd.github+json" \
      -H "Authorization: Bearer $TOKEN" \
      -H "X-GitHub-Api-Version: 2022-11-28" \
-     "https://api.github.com/user/repos?per_page=100" | jq -r '.[] | .clone_url' > "$REPO_LIST_FILE"
+     "https://api.github.com/user/repos?per_page=100" | jq -r '.[].clone_url' > "$REPO_LIST_FILE"
 
 echo "Repositories saved to $REPO_LIST_FILE"
 
@@ -19,18 +18,18 @@ echo "{" > "$BRANCHES_LIST_FILE"
 
 while read -r repo; do
     # Extract repository name and owner
-    repo_name=$(basename "$repo" .git)  # Extract repo name
-    repo_owner=$(echo "$repo" | awk -F '/' '{print $(NF-1)}')  # Extract repo owner
+    repo_name=$(basename "$repo" .git) # Extract repo name
+    repo_owner=$(echo "$repo" | awk -F '/' '{print $(NF-1)}') # Extract repo owner
 
-    # Construct GitHub API URL correctly
+    # Construct GitHub API URL
     branchesApiUrl="https://api.github.com/repos/$repo_owner/$repo_name/branches"
 
     echo "Fetching branches from: $branchesApiUrl"
 
-    # Fetch branches and ensure JSON array format
+    # Fetch branches
     branches=$(curl -s -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer $TOKEN" \
-                    "$branchesApiUrl" | jq -r '[.[] | .name]')
+                   -H "Authorization: Bearer $TOKEN" \
+                   "$branchesApiUrl" | jq -r '.[].name')
 
     # Handle empty branch list
     if [[ "$branches" == "[]" ]]; then
@@ -38,12 +37,16 @@ while read -r repo; do
     fi
 
     # Append repo information to JSON file
-    echo "\"$repo_name\": { \"branches\": $branches, \"git_url\": \"$repo\" }," >> "$BRANCHES_LIST_FILE"
+    echo "\"$repo\": $branches," >> "$BRANCHES_LIST_FILE"
 
 done < "$REPO_LIST_FILE"
 
-# Remove last comma and close JSON object properly
+# Remove last comma and close JSON properly
 sed -i '$ s/,$//' "$BRANCHES_LIST_FILE"
 echo "}" >> "$BRANCHES_LIST_FILE"
 
 echo "Branches saved to $BRANCHES_LIST_FILE"
+
+
+
+
