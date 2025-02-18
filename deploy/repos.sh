@@ -29,24 +29,23 @@ while read -r repo; do
     # Fetch branches
     branches=$(curl -s -H "Accept: application/vnd.github+json" \
                    -H "Authorization: Bearer $TOKEN" \
-                   "$branchesApiUrl" | jq -r '.[].name')
+                   "$branchesApiUrl" | jq -r '[.[].name]')
 
     # Handle empty branch list
     if [[ "$branches" == "[]" ]]; then
         branches='["main"]'
     fi
 
-    # Append repo information to JSON file
+    # Append repo information to JSON file (ensure proper formatting)
     echo "\"$repo\": $branches," >> "$BRANCHES_LIST_FILE"
 
 done < "$REPO_LIST_FILE"
 
-# Remove last comma and close JSON properly
+# Remove the last comma to maintain valid JSON
 sed -i '$ s/,$//' "$BRANCHES_LIST_FILE"
+
+# Close the JSON object properly
 echo "}" >> "$BRANCHES_LIST_FILE"
 
 echo "Branches saved to $BRANCHES_LIST_FILE"
-
-
-
 
