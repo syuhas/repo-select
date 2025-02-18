@@ -47,3 +47,23 @@ sed -i '$ s/,$//' "$BRANCHES_LIST_FILE"
 echo "}" >> "$BRANCHES_LIST_FILE"
 
 echo "Branches saved to $BRANCHES_LIST_FILE"
+
+
+
+# import groovy.json.JsonSlurper
+
+
+
+# // Define the JSON file path
+# def jsonFile = new File("/home/jenkins_home/workspace/fetch_repos/github_branches.json")
+
+# // Check if the file exists
+# if (!jsonFile.exists()) {
+#     return ["No Repositories Found"]
+# }
+
+# // Parse the JSON file
+# def jsonContent = new JsonSlurper().parseText(jsonFile.text)
+
+# // Extract repository names (keys of JSON object)
+# return jsonContent.keySet().toList()
